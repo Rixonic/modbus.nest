@@ -1,8 +1,8 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import ModbusClient from 'modbus-serial';
 import { SensorService } from '../../services/laboratorio/laboratory.service';
 import { sensorsAddr } from '../../../utils/const';
-import { LaboratoryGateway } from './websocket.gateway';
+import { EventsGateway } from '../../events/events.gateway';
 
 interface Sensor {
   id: number;
@@ -28,16 +28,17 @@ interface MessageControl {
 }
 
 @Injectable()
-export class ModbusService implements OnModuleInit {
+export class ModbusService implements OnModuleInit, OnModuleDestroy {
   private client: ModbusClient;
   private sensors: Sensor[] = [];
   private messageControl: MessageControl[] = [];
   private time: { [key: string]: number } = {};
   private isReading: boolean = false;
+  private readingInterval: NodeJS.Timeout;
 
   constructor(
     private readonly sensorsService: SensorService,
-    private readonly laboratoryGateway: LaboratoryGateway
+    private readonly eventsGateway: EventsGateway
   ) {
     this.initializeModbusClient();
   }
@@ -98,20 +99,25 @@ export class ModbusService implements OnModuleInit {
     if (this.isReading) return;
     this.isReading = true;
     
-    while (this.isReading) {
+    // Iniciar el intervalo de lectura
+    this.readingInterval = setInterval(async () => {
       try {
         await this.readTemperatures();
-        console.log('Temperaturas leídas');
-        await new Promise(resolve => setTimeout(resolve, 1000)); // Esperar 1 segundo
       } catch (error) {
         console.error('Error en la lectura de temperaturas:', error);
-        await new Promise(resolve => setTimeout(resolve, 5000)); // Esperar 5 segundos en caso de error
       }
-    }
+    }, 1000); // Leer cada segundo
   }
 
   stopReading() {
+    if (this.readingInterval) {
+      clearInterval(this.readingInterval);
+    }
     this.isReading = false;
+  }
+
+  async onModuleDestroy() {
+    this.stopReading();
   }
 
   async readTemperatures() {
@@ -147,7 +153,7 @@ export class ModbusService implements OnModuleInit {
       }
     }
     // Emitir actualización de sensores a través del WebSocket
-    this.laboratoryGateway.emitSensorUpdate(this.sensors);
+    this.eventsGateway.broadcastLaboratoryData(this.sensors);
   }
 
   async updateSensor(sensorId: string, data: Partial<Sensor>) {
@@ -162,7 +168,7 @@ export class ModbusService implements OnModuleInit {
     }
     
     // Emitir actualización después de modificar el sensor
-    this.laboratoryGateway.emitSensorUpdate(this.sensors);
+    this.eventsGateway.broadcastLaboratoryData(this.sensors);
     return sensor;
   }
 
@@ -191,6 +197,6 @@ export class ModbusService implements OnModuleInit {
     });
 
     // Emitir actualización después de configurar los sensores
-    this.laboratoryGateway.emitSensorUpdate(this.sensors);
+    this.eventsGateway.broadcastLaboratoryData(this.sensors);
   }
 }

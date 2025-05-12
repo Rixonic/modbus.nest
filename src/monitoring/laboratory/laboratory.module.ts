@@ -1,17 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ModbusService } from './modbus.service';
-import { LaboratoryGateway } from './websocket.gateway';
-import { SensorService } from '../../services/laboratorio/laboratory.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Sensor } from '../../sensors/sensor.entity';
+import { LaboratoryModule } from '../../services/laboratorio/laboratory.module';
+import { EventsGateway } from '../../events/events.gateway';
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    TypeOrmModule.forFeature([Sensor])
+    LaboratoryModule,
+    //TypeOrmModule.forFeature([Sensor])
   ],
-  providers: [ModbusService, LaboratoryGateway, SensorService],
-  exports: [ModbusService, LaboratoryGateway]
+  providers: [ModbusService, EventsGateway],
+  exports: [ModbusService]
 })
 export class ModbusLaboratoryModule {} 

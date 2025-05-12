@@ -17,6 +17,8 @@ import {
 } from './sensorReadings/sensorReading.entity';
 import { Alarms } from './plc/plc.entity';
 import { ModbusLaboratoryModule } from './monitoring/laboratory/laboratory.module';
+import { EventsModule } from './events/events.module';
+
 @Module({
   imports: [
     // Conexión a PostgreSQL para los sensores
@@ -63,6 +65,7 @@ import { ModbusLaboratoryModule } from './monitoring/laboratory/laboratory.modul
     LaboratoryModule,
     PdfModule,
     ModbusLaboratoryModule,
+    EventsModule,
   ],
 })
 export class AppModule {}

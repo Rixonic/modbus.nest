@@ -7,7 +7,7 @@ async function bootstrap() {
   app.enableCors({
     origin: '*', // Reemplaza con el origen permitido
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Si necesitas cookies o autenticación
+    credentials: false, // Si necesitas cookies o autenticación
   });
 
   await app.listen(4125);
