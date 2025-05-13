@@ -9,14 +9,14 @@ interface Sensor {
   name: string;
   sensorId: string;
   labId: string;
-  type: 'HELADERA' | 'FREEZER' | 'ESTUFA' | 'AMBIENTE';
+  type: string;
   location: string;
   tempAddr: number;
   max: number;
   min: number;
   time: number;
   alert: boolean;
-  offset?: number;
+  offset: number;
   temp: number | null;
 }
 
@@ -49,25 +49,11 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
       const dbSensors = await this.sensorsService.findAll();
       
       // Convertir los sensores de la BD al formato requerido
-      const formattedSensors = dbSensors.map(sensor => ({
-        id: sensor.id,
-        name: sensor.name,
-        sensorId: sensor.sensorId,
-        labId: sensor.labId,
-        type: sensor.type as 'HELADERA' | 'FREEZER' | 'ESTUFA' | 'AMBIENTE',
-        location: sensor.location,
-        tempAddr: sensorsAddr.find(addr => addr.sensorId === sensor.sensorId)?.tempAddr || 0,
-        max: sensor.max,
-        min: sensor.min,
-        time: sensor.time,
-        offset: sensor.offset,
-        temp: null,
-        alert: false
-      }));
+
 
       // Configurar los sensores
-      this.setSensors(formattedSensors);
-      
+      this.setSensors(dbSensors);
+
       // Iniciar la lectura de temperaturas
       await this.startReading();
     } catch (error) {
@@ -124,7 +110,7 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
     for (const sensor of this.sensors) {
       try {
         const tempRegs = await this.client.readHoldingRegisters(sensor.tempAddr, 2);
-        const temp = parseFloat((this.registersToFloat(tempRegs.data) - (sensor.offset || 0)).toFixed(2));
+        const temp = parseFloat((this.registersToFloat(tempRegs.data) - (sensor.offset)).toFixed(2));
 
         if (temp > 1000 || temp < -1000) {
           sensor.temp = null;
@@ -153,6 +139,7 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
       }
     }
     // Emitir actualización de sensores a través del WebSocket
+    console.log(`Hora de envío: ${new Date().toLocaleTimeString()}`);
     this.eventsGateway.broadcastLaboratoryData(this.sensors);
   }
 
@@ -176,11 +163,12 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
     return this.sensors;
   }
 
-  setSensors(sensors: Omit<Sensor, 'temp' | 'alert'>[]) {
+  setSensors(sensors: Omit<Sensor, 'temp' | 'alert'|'tempAddr'>[]) {
     this.sensors = sensors.map(sensor => ({
       ...sensor,
       temp: null,
-      alert: false
+      alert: false,
+      tempAddr: sensorsAddr.find(addr => addr.sensorId === sensor.sensorId)?.tempAddr || 0
     }));
 
     this.time = {};
@@ -197,6 +185,6 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Emitir actualización después de configurar los sensores
-    this.eventsGateway.broadcastLaboratoryData(this.sensors);
+    //this.eventsGateway.broadcastLaboratoryData(this.sensors);
   }
 }

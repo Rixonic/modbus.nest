@@ -14,6 +14,7 @@ import {
       origin: '*',
     },
   })
+
   export class EventsGateway {
     @WebSocketServer()
     server: Server;
