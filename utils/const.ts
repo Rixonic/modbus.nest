@@ -92,3 +92,96 @@ export const sensorsAddr = [
         'tempAddr': 36,
     }
 ];
+
+
+
+
+
+// Veronica Montero: 7210451021
+// Daniel Bernatebe: 6631285277
+// Tecnicos: 7194476256 
+// Bioquimicos: 7010159330
+// Franco (yo): 5083746157
+// Cristian: 7468417252
+
+export const userGroups = [
+    [
+        {
+            chatId: "5083746157",   // Franco
+            workingHours: [0, 24],
+            admin: false,
+            name: "Franco Cejas"
+        }, 
+       // {
+       //     chatId: "7194476256",   // Tecnico 
+       //     workingHours: [0, 24],
+       //     admin: false
+       // }, 
+    //    {
+    //        chatId: "7010159330",   // Bioquimico
+    //        workingHours: [0, 24],
+    //        admin: false
+    //    }
+    ], 
+    [
+        {
+            chatId: "5083746157",   // Franco
+            workingHours: [0, 24],
+            admin: true,
+            name: "Franco Cejas"
+        }, 
+      //  {
+      //      chatId: "7194476256",   // Tecnico 
+      //      workingHours: [0, 24],
+      //      admin:true
+      //  }, 
+      //  {
+      //      chatId: "7010159330",   // Bioquimico
+      //      workingHours: [0, 24],
+      //      admin: true
+      //  },
+      //  {
+      //      chatId: "6631285277",   // Daniel Bernatebe
+      //      workingHours: [7, 22],
+      //      admin: true
+      //  }, 
+      //  {
+      //      chatId: "7468417252",   // Cristian Lozano
+      //      workingHours: [7, 22],
+      //      admin: true
+      //  }, 
+    ],
+    [
+        {
+            chatId: "5083746157",   // Franco
+            workingHours: [0, 24],
+            admin: true,
+            name: "Franco Cejas"
+        }, 
+      //  {
+      //      chatId: "7194476256",   // Tecnico 
+      //      workingHours: [0, 24],
+      //      admin:true
+      //  }, 
+      //  {
+      //      chatId: "7010159330",   // Bioquimico
+      //      workingHours: [0, 24],
+      //      admin: true
+      //  },
+      //  {
+      //      chatId: "6631285277",   // Daniel Bernatebe
+      //      workingHours: [7, 22],
+      //      admin: true
+      //  }, 
+        // {
+        //     chatId: "7468417252",   // Cristian Lozano
+        //     workingHours: [7, 22],
+        //     admin: true
+        // }, 
+        //{
+        //    chatId: "7210451021",   // Veronica
+        //    workingHours: [7, 22],
+        //    admin: true
+        //}, 
+    ]
+];

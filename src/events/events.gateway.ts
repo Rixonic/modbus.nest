@@ -29,7 +29,7 @@ import {
       return data;
     }
 
-    broadcastLaboratoryData(data: any) {
+    broadcastLaboratory(data: any) {
       this.server.emit('laboratoryData', data);
     }
   }
