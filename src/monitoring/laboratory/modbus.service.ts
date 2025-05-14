@@ -87,11 +87,12 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
     this.isReading = true;
 
     this.telegramService.sendMessage(5083746157, 'Hola');
-
+    
     // Iniciar el intervalo de lectura
     this.readingInterval = setInterval(async () => {
       try {
         await this.readTemperatures();
+        await this.controlMessage();
       } catch (error) {
         console.error('Error en la lectura de temperaturas:', error);
       }
@@ -195,6 +196,7 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
   setSensors(sensors: Omit<Sensor, 'temp' | 'alert' | 'tempAddr'>[]) {
     this.sensors = sensors.map(sensor => ({
       ...sensor,
+      time: sensor.time/10 || 0,
       temp: null,
       alert: false,
       tempAddr: sensorsAddr.find(addr => addr.sensorId === sensor.sensorId)?.tempAddr || 0
@@ -218,32 +220,32 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
   }
 
   private sendMessagesToGroup(sensor, userGroup) {
-  const now = new Date();
-  const hour = now.getHours(); // Devuelve la hora (0-23)
-  userGroup.forEach(user => {
-    if (hour < user.workingHours[0] || hour > user.workingHours[1]) {
-      console.log("Usuario: " + user.name + " saltado");
-      return
-    } console.log("Enviando mensaje a: " + user.name);
-    var messageContent = sensor.type + ": " + sensor.name + " fuera de temperatura.\nArea: " + sensor.location + ".\nCodigo: " + sensor.labId;
-    var callbackRecieved = {
-      sensorId: sensor.sensorId,
-      received: true,
-      canceled: false
-    };
-    var callbackCanceled = {
-      sensorId: sensor.sensorId,
-      received: false,
-      canceled: true
-    };
-    if (!user.admin) {
+    const now = new Date();
+    const hour = now.getHours(); // Devuelve la hora (0-23)
+    userGroup.forEach(user => {
+      if (hour < user.workingHours[0] || hour > user.workingHours[1]) {
+        console.log("Usuario: " + user.name + " saltado");
+        return
+      } console.log("Enviando mensaje a: " + user.name);
+      var messageContent = sensor.type + ": " + sensor.name + " fuera de temperatura.\nArea: " + sensor.location + ".\nCodigo: " + sensor.labId;
+      //var callbackRecieved = {
+      //  sensorId: sensor.sensorId,
+      //  received: true,
+      //  canceled: false
+      //};
+      var callbackCanceled = {
+        sensorId: sensor.sensorId,
+        received: false,
+        canceled: true
+      };
+
       this.telegramService.sendMessageWithButtons(user.chatId, messageContent, [{
         text: "Recibido",
         callback_data: JSON.stringify(callbackCanceled)
       }]);
-    }
-  });
-}
+
+    });
+  }
 
 
 }
