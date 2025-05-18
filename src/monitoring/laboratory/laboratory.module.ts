@@ -13,6 +13,6 @@ import { TelegramService } from '../../telegram/telegram.service';
     //TypeOrmModule.forFeature([Sensor])
   ],
   providers: [ModbusService, EventsGateway, TelegramService],
-  exports: [ModbusService]
+  exports: [ModbusService],
 })
-export class ModbusLaboratoryModule {} 
+export class ModbusLaboratoryModule {}

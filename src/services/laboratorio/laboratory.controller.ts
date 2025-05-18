@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Post,
@@ -16,12 +15,12 @@ import { Sensor } from 'src/sensors/sensor.entity';
 import { SensorService } from './laboratory.service';
 import { SensorReadingsService } from './laboratory.service';
 import { UpdateSensorDto } from 'src/sensors/dto/update-sensor.dto';
-
 @Controller('laboratorio')
 export class LaboratoryController {
   constructor(
     private readonly sensorsService: SensorService,
     private readonly sensorReadingsService: SensorReadingsService,
+    //private readonly modbusService: ModbusService,
   ) {}
 
   //Manejo de sensores
@@ -41,11 +40,15 @@ export class LaboratoryController {
   }
 
   @Put('/sensor/update')
-  updateOne(
+  async updateOne(
     //@Param('id', ParseIntPipe) id: number,
     @Body() sensorDto: UpdateSensorDto,
   ): Promise<Sensor | null> {
-    return this.sensorsService.updateOne(sensorDto.id, sensorDto);
+    const updatedSensor = await this.sensorsService.updateOne(sensorDto.id, sensorDto);
+    if (updatedSensor) {
+      //this.modbusService.updateSensor(updatedSensor.sensorId, updatedSensor);
+    }
+    return updatedSensor;
   }
 
   //Manejo lecturas

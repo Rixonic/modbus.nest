@@ -18,10 +18,13 @@ import {
 import { Alarms } from './plc/plc.entity';
 import { ModbusLaboratoryModule } from './monitoring/laboratory/laboratory.module';
 import { EventsModule } from './events/events.module';
-import { TelegrafModule } from 'nestjs-telegraf';
 import { TelegramModule } from './telegram/telegram.module';
+import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      envFilePath: '.env',
+    }),
     // Conexión a PostgreSQL para los sensores
     TypeOrmModule.forRoot({
       name: 'sensors',
@@ -67,9 +70,6 @@ import { TelegramModule } from './telegram/telegram.module';
     PdfModule,
     ModbusLaboratoryModule,
     EventsModule,
-    TelegrafModule.forRoot({
-      token: "6961898929:AAEc-BCuas5l1u4R69PfomW9EUQrr0jdFsc",
-    }),
     TelegramModule,
   ],
 })

@@ -1,6 +1,10 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Interval } from '@nestjs/schedule';
 import ModbusClient from 'modbus-serial';
-import { SensorService } from '../../services/laboratorio/laboratory.service';
+import {
+  SensorReadingsService,
+  SensorService,
+} from '../../services/laboratorio/laboratory.service';
 import { sensorsAddr, userGroups } from '../../../utils/const';
 import { EventsGateway } from '../../events/events.gateway';
 import { TelegramService } from 'src/telegram/telegram.service';
@@ -12,7 +16,7 @@ interface Sensor {
   labId: string;
   type: string;
   location: string;
-  tempAddr: number;
+  tempAddr: number; 
   max: number;
   min: number;
   time: number;
@@ -35,28 +39,21 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
   private messageControl: MessageControl[] = [];
   private time: { [key: string]: number } = {};
   private isReading: boolean = false;
-  private readingInterval: NodeJS.Timeout;
 
   constructor(
     private readonly sensorsService: SensorService,
+    private readonly sensorReadingsService: SensorReadingsService,
     private readonly eventsGateway: EventsGateway,
-    private telegramService: TelegramService
+    private telegramService: TelegramService,
   ) {
     this.initializeModbusClient();
   }
 
   async onModuleInit() {
     try {
-      // Obtener sensores desde la base de datos
       const dbSensors = await this.sensorsService.findAll();
-
-      // Convertir los sensores de la BD al formato requerido
-
-      // Configurar los sensores
       this.setSensors(dbSensors);
-
-      // Iniciar la lectura de temperaturas
-      await this.startReading();
+      this.isReading = true;
     } catch (error) {
       console.error('Error al cargar sensores desde la base de datos:', error);
     }
@@ -82,29 +79,44 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
     ]).readFloatBE(0);
   }
 
-  async startReading() {
-    if (this.isReading) return;
-    this.isReading = true;
+  @Interval(1000) // Lectura de temperaturas cada segundo
+  async handleTemperatureReading() {
+    if (!this.isReading) return;
 
-    this.telegramService.sendMessage(5083746157, 'Hola');
-    
-    // Iniciar el intervalo de lectura
-    this.readingInterval = setInterval(async () => {
-      try {
-        await this.readTemperatures();
-        await this.controlMessage();
-      } catch (error) {
-        console.error('Error en la lectura de temperaturas:', error);
-      }
-    }, 1000); // Leer cada segundo
+    try {
+      await this.readTemperatures();
+    } catch (error) {
+      console.error('Error en la lectura de temperaturas:', error);
+    }
+  }
 
+  @Interval(1000) // Control de mensajes cada 5 segundos
+  async handleMessageControl() {
+    if (!this.isReading) return;
 
+    try {
+      await this.controlMessage();
+    } catch (error) {
+      console.error('Error en el control de mensajes:', error);
+    }
+  }
+
+  @Interval(300000) // Ejecutar cada 5 minutos
+  async handleFiveMinuteTask() {
+    if (!this.isReading) return;
+
+    try {
+      // Aquí puedes agregar la lógica que quieras ejecutar cada 5 minutos
+      //await this.sensorReadingsService.saveMany(this.sensors);
+      console.log(
+        `Ejecutando tarea programada: ${new Date().toLocaleTimeString()}`,
+      );
+    } catch (error) {
+      console.error('Error en la tarea programada:', error);
+    }
   }
 
   stopReading() {
-    if (this.readingInterval) {
-      clearInterval(this.readingInterval);
-    }
     this.isReading = false;
   }
 
@@ -115,8 +127,13 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
   async readTemperatures() {
     for (const sensor of this.sensors) {
       try {
-        const tempRegs = await this.client.readHoldingRegisters(sensor.tempAddr, 2);
-        const temp = parseFloat((this.registersToFloat(tempRegs.data) - (sensor.offset)).toFixed(2));
+        const tempRegs = await this.client.readHoldingRegisters(
+          sensor.tempAddr,
+          2,
+        );
+        const temp = parseFloat(
+          (this.registersToFloat(tempRegs.data) - sensor.offset).toFixed(2),
+        );
 
         if (temp > 1000 || temp < -1000) {
           sensor.temp = null;
@@ -124,7 +141,11 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
           sensor.temp = temp;
         }
 
-        if (sensor.temp === null || sensor.temp > sensor.max || sensor.temp < sensor.min) {
+        if (
+          sensor.temp === null ||
+          sensor.temp > sensor.max ||
+          sensor.temp < sensor.min
+        ) {
           if (sensor.time > 0) {
             sensor.time -= 1;
           } else {
@@ -135,24 +156,30 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
           sensor.time = this.time[sensor.sensorId];
         }
       } catch (error) {
-        console.error(`Error al leer temperatura del sensor ${sensor.sensorId}:`, error);
+        console.error(
+          `Error al leer temperatura del sensor ${sensor.sensorId}:`,
+          error,
+        );
       }
     }
     // Emitir actualización de sensores a través del WebSocket
-    console.log(`Hora de envío: ${new Date().toLocaleTimeString()}`);
+    //console.log(`Hora de envío: ${new Date().toLocaleTimeString()}`);
     this.eventsGateway.broadcastLaboratory(this.sensors);
   }
 
-
-
   async controlMessage() {
     for (const messageControl of this.messageControl) {
-      let sensor = this.sensors.find(s => s.sensorId === messageControl.sensorId);
+      const sensor = this.sensors.find(
+        (s) => s.sensorId === messageControl.sensorId,
+      );
 
       if (sensor?.alert && !messageControl.isCanceled) {
         //node.warn(messageControl);
         if (messageControl.timer == 0) {
-          this.sendMessagesToGroup(sensor, userGroups[messageControl.groupIndex]);
+          this.sendMessagesToGroup(
+            sensor,
+            userGroups[messageControl.groupIndex],
+          );
           if (userGroups.length - 1 > messageControl.groupIndex) {
             messageControl.groupIndex += 1;
           }
@@ -167,14 +194,12 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
       }
     }
     // Emitir actualización de sensores a través del WebSocket
-    console.log(`Hora de control: ${new Date().toLocaleTimeString()}`);
+    //console.log(`Hora de control: ${new Date().toLocaleTimeString()}`);
     this.eventsGateway.broadcastLaboratory(this.sensors);
   }
 
-
-
   async updateSensor(sensorId: string, data: Partial<Sensor>) {
-    const sensor = this.sensors.find(s => s.sensorId === sensorId);
+    const sensor = this.sensors.find((s) => s.sensorId === sensorId);
     if (!sensor) {
       throw new Error('Sensor no encontrado');
     }
@@ -183,6 +208,8 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
     if (data.time !== undefined) {
       this.time[sensorId] = data.time;
     }
+
+    //this.sensorsService.updateOne(sensor.id, sensor);
 
     // Emitir actualización después de modificar el sensor
     this.eventsGateway.broadcastLaboratory(this.sensors);
@@ -194,24 +221,26 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
   }
 
   setSensors(sensors: Omit<Sensor, 'temp' | 'alert' | 'tempAddr'>[]) {
-    this.sensors = sensors.map(sensor => ({
+    this.sensors = sensors.map((sensor) => ({
       ...sensor,
-      time: sensor.time/10 || 0,
+      time: sensor.time / 10 || 0,
       temp: null,
       alert: false,
-      tempAddr: sensorsAddr.find(addr => addr.sensorId === sensor.sensorId)?.tempAddr || 0
+      tempAddr:
+        sensorsAddr.find((addr) => addr.sensorId === sensor.sensorId)
+          ?.tempAddr || 0,
     }));
 
     this.time = {};
     this.messageControl = [];
 
-    sensors.forEach(sensor => {
+    sensors.forEach((sensor) => {
       this.time[sensor.sensorId] = sensor.time;
       this.messageControl.push({
         sensorId: sensor.sensorId,
         isCanceled: false,
         timer: 0,
-        groupIndex: 0
+        groupIndex: 0,
       });
     });
 
@@ -222,30 +251,33 @@ export class ModbusService implements OnModuleInit, OnModuleDestroy {
   private sendMessagesToGroup(sensor, userGroup) {
     const now = new Date();
     const hour = now.getHours(); // Devuelve la hora (0-23)
-    userGroup.forEach(user => {
+    userGroup.forEach((user) => {
       if (hour < user.workingHours[0] || hour > user.workingHours[1]) {
-        console.log("Usuario: " + user.name + " saltado");
-        return
-      } console.log("Enviando mensaje a: " + user.name);
-      var messageContent = sensor.type + ": " + sensor.name + " fuera de temperatura.\nArea: " + sensor.location + ".\nCodigo: " + sensor.labId;
-      //var callbackRecieved = {
-      //  sensorId: sensor.sensorId,
-      //  received: true,
-      //  canceled: false
-      //};
-      var callbackCanceled = {
-        sensorId: sensor.sensorId,
+        console.log('Usuario: ' + user.name + ' saltado');
+        return;
+      }
+      console.log('Enviando mensaje a: ' + user.name);
+      const messageContent =
+        sensor.type +
+        ': ' +
+        sensor.name +
+        ' fuera de temperatura.\nArea: ' +
+        sensor.location +
+        '.\nCodigo: ' +
+        sensor.labId;
+      const callbackCanceled = {
+        id: sensor.sensorId,
         received: false,
-        canceled: true
+        canceled: true,
+        service: 'LAB',
       };
 
-      this.telegramService.sendMessageWithButtons(user.chatId, messageContent, [{
-        text: "Recibido",
-        callback_data: JSON.stringify(callbackCanceled)
-      }]);
-
+      this.telegramService.sendMessageWithButtons(user.chatId, messageContent, [
+        {
+          text: 'Recibido',
+          callback_data: JSON.stringify(callbackCanceled),
+        },
+      ]);
     });
   }
-
-
 }

@@ -106,7 +106,7 @@ export class PdfService implements OnModuleInit, OnModuleDestroy {
         service,
       );
 
-      let temp: number[];
+      let temp: (number | null)[];
       let timestamp: Date[];
 
       if (setInterval) {

@@ -11,6 +11,24 @@ import { ReadSensorReadingDto } from 'src/sensorReadings/dto/read-sensorReading.
 import { CreateSensorReadingDto } from 'src/sensorReadings/dto/create-sensorReading.dto';
 import { UpdateSensorDto } from 'src/sensors/dto/update-sensor.dto';
 
+
+interface SensorInterface {
+  id: number;
+  name: string;
+  sensorId: string;
+  labId: string;
+  type: string;
+  location: string;
+  tempAddr: number;
+  max: number;
+  min: number;
+  time: number;
+  alert: boolean;
+  offset: number;
+  temp: number | null;
+}
+
+
 @Injectable()
 export class SensorService {
   constructor(
@@ -94,6 +112,22 @@ export class SensorReadingsService {
   }
 
   async createMany(
+    createSensorReadingsDto: CreateSensorReadingDto[],
+  ): Promise<string> {
+    const sensorReadings = createSensorReadingsDto.map((dto) => {
+      const sensorReading = new LaboratorySensorReading();
+      sensorReading.sensor_id = dto.id;
+      sensorReading.temp = dto.temp;
+      //sensorReading.timestamp = new Date();  // Asumiendo que timestamp es el momento actual
+      return sensorReading;
+    });
+
+    await this.sensorReadingsRepository.save(sensorReadings);
+
+    return 'OK';
+  }
+
+  async saveMany(
     createSensorReadingsDto: CreateSensorReadingDto[],
   ): Promise<string> {
     const sensorReadings = createSensorReadingsDto.map((dto) => {

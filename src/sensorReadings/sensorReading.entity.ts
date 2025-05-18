@@ -21,8 +21,8 @@ export abstract class SensorReading extends BaseEntity {
   @PrimaryColumn()
   sensor_id: number; // Clave primaria (parte 2)
 
-  @Column('decimal')
-  temp: number; // Temperatura registrada
+  @Column('decimal', { nullable: true })
+  temp: number | null; // Temperatura registrada
 }
 
 @Entity({ name: 'historic', schema: 'enfermeria', database: 'sensors' })
